@@ -5,7 +5,17 @@
 
 use std::error::Error;
 
+use crate::common;
 use crate::common::AdventError;
+
+pub fn run() {
+    let day1_input = common::get_day(1).unwrap();
+    println!(
+        "Day 1, part 1 solution: {}",
+        part_1(day1_input.clone()).unwrap()
+    );
+    println!("Day 1, part 2 solution: {}", part_2(day1_input).unwrap());
+}
 
 pub fn part_1(input: Vec<String>) -> Result<u64, Box<dyn Error>> {
     Ok(input

@@ -5,17 +5,20 @@
  * Christopher Phan
  */
 
-use cphan_advent_2023::common;
-use cphan_advent_2023::day1;
+use std::env;
+
+use cphan_advent_2023::all_days;
 
 fn main() {
-    let day1_input = common::get_day(1).unwrap();
-    println!(
-        "Day 1, part 1 solution: {}",
-        day1::part_1(day1_input.clone()).unwrap()
-    );
-    println!(
-        "Day 1, part 2 solution: {}",
-        day1::part_2(day1_input).unwrap()
-    );
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        println!("Usage: {} [day_numbers]", args[0]);
+    } else {
+        for val in args {
+            if let Ok(d) = val.parse::<usize>() {
+                all_days::run_day(d)
+            }
+        }
+    }
 }
