@@ -11,10 +11,10 @@ use crate::common::AdventError;
 pub fn run() {
     let day1_input = common::get_day(1).unwrap();
     println!(
-        "Day 1, part 1 solution: {}",
-        part_1(day1_input.clone()).unwrap()
+        "{}",
+        common::soln_output(1, 1, part_1(day1_input.clone()).unwrap())
     );
-    println!("Day 1, part 2 solution: {}", part_2(day1_input).unwrap());
+    println!("{}", common::soln_output(1, 2, part_2(day1_input).unwrap()));
 }
 
 pub fn part_1(input: Vec<String>) -> Result<u64, Box<dyn Error>> {

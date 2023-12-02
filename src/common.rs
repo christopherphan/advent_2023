@@ -7,6 +7,10 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 
+pub fn soln_output<T: fmt::Display>(day: usize, part: usize, soln: T) -> String {
+    format!("Day {}, part {} solution: {}", day, part, soln)
+}
+
 pub fn split_string(raw: String) -> Vec<String> {
     raw.split('\n').map(|k| k.to_string()).collect()
 }
