@@ -46,7 +46,7 @@ fn check_for_digit_at_start(x: &str, words: bool) -> Result<u64, AdventError> {
     } else if x.starts_with("one") {
         Ok(1)
     } else if x.starts_with("two") {
-        Ok(2) // Skye
+        Ok(2)
     } else if x.starts_with("three") {
         Ok(3)
     } else if x.starts_with("four") {
@@ -56,7 +56,7 @@ fn check_for_digit_at_start(x: &str, words: bool) -> Result<u64, AdventError> {
     } else if x.starts_with("six") {
         Ok(6)
     } else if x.starts_with("seven") {
-        Ok(7) // Emmy
+        Ok(7)
     } else if x.starts_with("eight") {
         Ok(8)
     } else if x.starts_with("nine") {

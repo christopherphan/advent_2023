@@ -116,9 +116,6 @@ impl FromStr for BlockCollection {
     }
 }
 
-// Emmy
-// Chris
-
 impl Add for BlockCollection {
     type Output = Self;
     fn add(self, other: Self) -> Self::Output {
@@ -139,8 +136,6 @@ impl AddAssign for BlockCollection {
         };
     }
 }
-
-// dragon kitty
 
 struct Game {
     pub id: u64,
