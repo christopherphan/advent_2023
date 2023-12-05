@@ -21,21 +21,20 @@ pub fn part_1(input: Vec<String>) -> u64 {
 }
 
 pub fn part_2(input: Vec<String>) -> u64 {
-    let mut cards: Vec<SimplifiedCard> = Card::read_input(input)
+    let cards: Vec<SimplifiedCard> = Card::read_input(input)
         .iter()
         .cloned()
         .map(|k| k.into())
         .collect();
-    let card_no = CardNumbering(cards.clone());
-    let mut cards_won: u64 = 0;
-    while !cards.is_empty() {
-        let top_card = cards.pop().unwrap();
-        cards_won += 1;
-        for k in top_card.0 {
-            cards.push(card_no.get(k).unwrap());
+    let number_of_cards = cards.len();
+    let mut card_quant: Vec<u64> = cards.iter().map(|_| 1).collect();
+    let card_no = CardNumbering(cards);
+    for c in 0..number_of_cards {
+        for k in card_no.get(c + 1).unwrap().0 {
+            card_quant[k - 1] += card_quant[c];
         }
     }
-    cards_won
+    card_quant.iter().sum()
 }
 
 #[derive(Debug, Clone)]
