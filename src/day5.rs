@@ -4,6 +4,7 @@
  */
 
 use std::error::Error;
+use std::num::NonZeroUsize;
 use std::str::FromStr;
 
 use crate::common;
@@ -28,43 +29,117 @@ pub fn part_2(input: Vec<String>) -> Result<u64, Box<dyn Error>> {
 
 pub fn part(input: Vec<String>, part2: bool) -> Result<u64, Box<dyn Error>> {
     let (seeds, map_stack) = parse_input(input, part2)?;
-    let locations: Vec<Obj> = seeds
-        .iter()
-        .map(|s| ObjMapPart::apply_stack(map_stack.clone(), *s))
-        .collect();
-    if locations.iter().all(|k| k.obj_type == ObjType::Location) {
-        locations
-            .iter()
-            .map(|k| k.id as u64)
-            .min()
-            .ok_or(Box::new(AdventError("No locations".into())))
-    } else {
-        Err(Box::new(AdventError(
-            "Not all seeds turned into locations".into(),
-        )))
+    match map_stack.apply(&seeds).min() {
+        Some(k) => Ok(k as u64),
+        None => Err(Box::new(AdventError("No locations".into()))),
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-enum ObjType {
-    Seed,
-    Soil,
-    Fertilizer,
-    Water,
-    Light,
-    Temperature,
-    Humidity,
-    Location,
+struct IntegerInterval {
+    first: usize,
+    length: NonZeroUsize,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-struct Obj {
-    obj_type: ObjType,
-    id: usize,
+impl IntegerInterval {
+    fn single(val: usize) -> Self {
+        Self {
+            first: val,
+            length: NonZeroUsize::new(1).unwrap(),
+        }
+    }
+
+    fn last(&self) -> usize {
+        self.first + self.length.get() - 1
+    }
+
+    fn overlapping(&self, other: &Self) -> bool {
+        let max_first = self.first.max(other.first);
+        let min_last = self.last().min(other.last());
+        max_first <= min_last
+    }
+
+    fn overlap(&self, other: &Self) -> Option<Self> {
+        let max_first = self.first.max(other.first);
+        let min_last = self.last().min(other.last());
+        if max_first <= min_last {
+            let length = NonZeroUsize::new(min_last - max_first + 1).unwrap();
+            Some(Self {
+                first: max_first,
+                length,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn set_minus(&self, other: &Self) -> Vec<Self> {
+        match self.overlap(other) {
+            Some(interval) => {
+                let mut out_vec: Vec<Self> = vec![];
+                if self.first < interval.first {
+                    out_vec.push(Self {
+                        first: self.first,
+                        length: NonZeroUsize::new(interval.first - self.first).unwrap(),
+                    });
+                }
+                if self.last() > interval.last() {
+                    out_vec.push(Self {
+                        first: interval.last() + 1,
+                        length: NonZeroUsize::new(self.last() - interval.last()).unwrap(),
+                    });
+                }
+                out_vec
+            }
+            None => vec![self.clone()],
+        }
+    }
+
+    fn combine(&self, other: &Self) -> Vec<Self> {
+        let max_first = self.first.max(other.first);
+        let min_last = self.last().min(other.last());
+        if max_first <= min_last + 1 {
+            // overlap or adjacent
+            let first = self.first.min(other.first);
+            let max_last = self.last().max(other.last());
+            let length = NonZeroUsize::new(max_last - first + 1).unwrap();
+            vec![Self { first, length }]
+        } else {
+            // not overlapping or adjacent
+            vec![*self, *other]
+        }
+    }
+
+    fn combine_vector(vals: Vec<Self>) -> Vec<Self> {
+        let mut val_copy = vals.clone();
+        val_copy.sort_by_key(|k| k.first);
+        let mut out_vec: Vec<Self> = vec![];
+        for val in val_copy {
+            if out_vec.is_empty() {
+                out_vec.push(val);
+            } else {
+                let rightmost = out_vec.pop().unwrap();
+                let mut to_push = rightmost.combine(&val);
+                out_vec.append(&mut to_push);
+            }
+        }
+        out_vec
+    }
 }
 
-impl Obj {
-    fn read_seeds(input: String, part2: bool) -> Vec<Obj> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct IntegerIntervalUnion(Vec<IntegerInterval>);
+
+impl IntegerIntervalUnion {
+    fn simplify(&mut self) {
+        self.0 = IntegerInterval::combine_vector(self.0.clone());
+    }
+
+    fn min(&self) -> Option<usize> {
+        self.0.iter().map(|k| k.first).min()
+    }
+
+    fn read_seeds(input: String, part2: bool) -> Self {
         let parts: Vec<&str> = input.split_whitespace().collect();
         let mut input_numbers: Vec<usize> = parts
             .iter()
@@ -72,161 +147,146 @@ impl Obj {
             .filter(|k| k.is_ok())
             .map(|k| k.unwrap())
             .collect();
-        let seed_nos: Vec<usize> = if part2 {
-            let mut out_vec: Vec<usize> = vec![];
+        if part2 {
+            let mut ranges: Vec<IntegerInterval> = vec![];
             while input_numbers.len() > 1 {
-                let range_len = input_numbers.pop().unwrap();
-                let start = input_numbers.pop().unwrap();
-                let mut to_append: Vec<usize> = (start..(start + range_len)).collect();
-                out_vec.append(&mut to_append);
+                let length_raw = input_numbers.pop().unwrap();
+                let first = input_numbers.pop().unwrap();
+                if length_raw > 0 {
+                    ranges.push(IntegerInterval {
+                        first,
+                        length: NonZeroUsize::new(length_raw).unwrap(),
+                    });
+                }
             }
-            out_vec
+            let mut out_val = Self(ranges);
+            out_val.simplify();
+            out_val
         } else {
-            input_numbers.clone()
-        };
-        seed_nos
-            .iter()
-            .map(|k| Obj {
-                obj_type: ObjType::Seed,
-                id: *k,
-            })
-            .collect()
+            Self(
+                input_numbers
+                    .iter()
+                    .map(|k| IntegerInterval::single(*k))
+                    .collect(),
+            )
+        }
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-enum ObjMapPart {
-    Shift {
-        source_start: Obj,
-        destination_start: Obj,
-        range_length: usize,
-    },
-    NoShift {
-        source_type: ObjType,
-        destination_type: ObjType,
-    },
+struct RangeShift {
+    source_interval: IntegerInterval,
+    destination_start: usize,
 }
 
-impl ObjMapPart {
-    fn apply(&self, x: Obj) -> Obj {
-        match self {
-            Self::Shift {
-                source_start,
-                destination_start,
-                range_length,
-            } => {
-                if x.obj_type == source_start.obj_type
-                    && x.id >= source_start.id
-                    && x.id < source_start.id + range_length
-                {
-                    Obj {
-                        obj_type: destination_start.obj_type,
-                        id: x.id - source_start.id + destination_start.id,
-                    }
-                } else {
-                    x
-                }
-            }
-            Self::NoShift {
-                source_type,
-                destination_type,
-            } => {
-                if x.obj_type == *source_type {
-                    Obj {
-                        obj_type: *destination_type,
-                        id: x.id,
-                    }
-                } else {
-                    x
-                }
-            }
-        }
+#[derive(PartialEq, Eq, Clone, Debug)]
+struct RangeShiftResult {
+    image: Option<IntegerInterval>,
+    not_mapped: Vec<IntegerInterval>,
+}
+
+impl RangeShift {
+    fn applies_to_interval(&self, val: &IntegerInterval) -> bool {
+        self.source_interval.overlapping(val)
     }
 
-    fn read_line(
-        s: String,
-        source_type: ObjType,
-        destination_type: ObjType,
-    ) -> Result<Self, Box<dyn Error>> {
+    fn apply_to_interval(&self, val: &IntegerInterval) -> RangeShiftResult {
+        let not_mapped: Vec<IntegerInterval> = val.set_minus(&self.source_interval);
+        let image: Option<IntegerInterval> =
+            if let Some(overlap) = val.overlap(&self.source_interval) {
+                Some(IntegerInterval {
+                    first: self.destination_start + overlap.first - self.source_interval.first,
+                    length: overlap.length,
+                })
+            } else {
+                None
+            };
+        RangeShiftResult { image, not_mapped }
+    }
+
+    fn read_line(s: String) -> Result<Self, Box<dyn Error>> {
         let parts: Vec<&str> = s.split_whitespace().collect();
-        let destination_start_id: usize = parts
+        let destination_start: usize = parts
             .get(0)
             .ok_or(AdventError("malformed input".into()))?
             .parse()?;
-        let source_start_id: usize = parts
+        let first: usize = parts
             .get(1)
             .ok_or(AdventError("malformed input".into()))?
             .parse()?;
-        let range_length: usize = parts
-            .get(2)
-            .ok_or(AdventError("malformed input".into()))?
-            .parse()?;
+        let length = NonZeroUsize::new(
+            parts
+                .get(2)
+                .ok_or(AdventError("malformed input".into()))?
+                .parse()?,
+        )
+        .ok_or(AdventError("zero-length range".into()))?;
+        let source_interval = IntegerInterval { first, length };
 
-        Ok(Self::Shift {
-            source_start: Obj {
-                obj_type: source_type,
-                id: source_start_id,
-            },
-            destination_start: Obj {
-                obj_type: destination_type,
-                id: destination_start_id,
-            },
-            range_length,
+        Ok(RangeShift {
+            source_interval,
+            destination_start,
         })
-    }
-
-    fn read_lines(
-        input: Vec<String>,
-        source_type: ObjType,
-        destination_type: ObjType,
-    ) -> Vec<Self> {
-        let mut out_vec: Vec<Self> = input
-            .iter()
-            .map(|line| Self::read_line(line.into(), source_type, destination_type))
-            .filter(|k| k.is_ok())
-            .map(|k| k.unwrap())
-            .collect();
-        out_vec.push(Self::NoShift {
-            source_type,
-            destination_type,
-        });
-        out_vec
-    }
-
-    fn apply_stack(stack: Vec<Self>, x: Obj) -> Obj {
-        let mut y = x;
-        for m in stack {
-            y = m.apply(y);
-        }
-        y
     }
 }
 
-const OBJ_ORDER: [ObjType; 8] = [
-    ObjType::Seed,
-    ObjType::Soil,
-    ObjType::Fertilizer,
-    ObjType::Water,
-    ObjType::Light,
-    ObjType::Temperature,
-    ObjType::Humidity,
-    ObjType::Location,
-];
+#[derive(Clone, Debug)]
+struct RangeShiftStack(Vec<RangeShift>);
+
+impl RangeShiftStack {
+    fn apply(&self, int_union: &IntegerIntervalUnion) -> IntegerIntervalUnion {
+        let stack_len: usize = self.0.len();
+        let mut out_vec: Vec<IntegerInterval> = vec![];
+        let mut source_vec: Vec<IntegerInterval> = int_union.0.clone();
+        while !source_vec.is_empty() {
+            let mut pos: usize = 0;
+            let mut matched = false;
+            let next_int = source_vec.pop().unwrap();
+            while !matched && pos < stack_len {
+                if self.0[pos].applies_to_interval(&next_int) {
+                    let mut res = self.0[pos].apply_to_interval(&next_int);
+                    source_vec.append(&mut res.not_mapped);
+                    out_vec.push(res.image.unwrap());
+                    matched = true;
+                } else {
+                    pos += 1;
+                }
+            }
+            if !matched {
+                out_vec.push(next_int);
+            }
+        }
+        let mut ret_val = IntegerIntervalUnion(out_vec);
+        ret_val.simplify();
+        ret_val
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RangeShiftStackSequence(Vec<RangeShiftStack>);
+
+impl RangeShiftStackSequence {
+    fn apply(&self, val: &IntegerIntervalUnion) -> IntegerIntervalUnion {
+        let mut out_val = val.clone();
+        for stack in self.0.clone() {
+            out_val = stack.apply(&out_val);
+        }
+        out_val
+    }
+}
 
 fn parse_input(
     input: Vec<String>,
     part2: bool,
-) -> Result<(Vec<Obj>, Vec<ObjMapPart>), Box<dyn Error>> {
-    let mut source_type_num: usize = 0;
-    let mut target_type_num: usize = 1;
-    let mut seeds: Vec<Obj> = vec![];
-    let mut map_stack: Vec<ObjMapPart> = vec![];
-    let mut part_stack: Vec<String> = vec![];
+) -> Result<(IntegerIntervalUnion, RangeShiftStackSequence), Box<dyn Error>> {
+    let mut seeds = IntegerIntervalUnion(vec![]);
+    let mut map_stack = RangeShiftStackSequence(vec![]);
+    let mut current_rss = RangeShiftStack(vec![]);
     let mut ignore_next = true;
     for (idx, line) in input.iter().enumerate() {
         if idx == 0 {
             let parts: Vec<String> = line.split(':').map(|k| k.trim().into()).collect();
-            seeds = Obj::read_seeds(
+            seeds = IntegerIntervalUnion::read_seeds(
                 parts
                     .get(1)
                     .ok_or(AdventError("malformed input (seeds)".into()))?
@@ -238,28 +298,18 @@ fn parse_input(
         } else {
             if ignore_next {
                 ignore_next = false;
-            } else if line.trim().is_empty() && target_type_num < 8 {
-                let mut new_map_stack_part = ObjMapPart::read_lines(
-                    part_stack,
-                    OBJ_ORDER[source_type_num],
-                    OBJ_ORDER[target_type_num],
-                );
-                map_stack.append(&mut new_map_stack_part);
-                source_type_num += 1;
-                target_type_num += 1;
-                part_stack = vec![];
+            } else if line.trim().is_empty() {
+                map_stack.0.push(current_rss);
+                current_rss = RangeShiftStack(vec![]);
             } else {
-                part_stack.push(line.to_string());
+                if let Ok(shift) = RangeShift::read_line(line.to_string()) {
+                    current_rss.0.push(shift);
+                }
             }
         }
     }
-    if !part_stack.is_empty() {
-        let mut new_map_stack_part = ObjMapPart::read_lines(
-            part_stack,
-            OBJ_ORDER[source_type_num],
-            OBJ_ORDER[target_type_num],
-        );
-        map_stack.append(&mut new_map_stack_part);
+    if !current_rss.0.is_empty() {
+        map_stack.0.push(current_rss);
     }
     Ok((seeds, map_stack))
 }
@@ -316,38 +366,46 @@ humidity-to-location map:
     }
 
     #[test]
-    fn read_line_test() {
-        let a1 = Obj {
-            obj_type: ObjType::Seed,
-            id: 98,
+    fn part1_seeds_test() {
+        let example_input = common::split_string(EXAMPLE_INPUT.into());
+        let (seeds, _) = parse_input(example_input, false).unwrap();
+        assert_eq!(seeds.min().unwrap(), 13);
+    }
+
+    #[test]
+    fn part2_seeds_test() {
+        let example_input = common::split_string(EXAMPLE_INPUT.into());
+        let (seeds, _) = parse_input(example_input, true).unwrap();
+        assert_eq!(seeds.min().unwrap(), 55);
+    }
+
+    #[test]
+    fn overlap_test1() {
+        let interval = IntegerInterval {
+            first: 50,
+            length: NonZeroUsize::new(48).unwrap(),
         };
-        let a2 = Obj {
-            obj_type: ObjType::Seed,
-            id: 99,
-        };
-        let a3 = Obj {
-            obj_type: ObjType::Seed,
-            id: 20,
-        };
-        let b1 = Obj {
-            obj_type: ObjType::Soil,
-            id: 50,
-        };
-        let b2 = Obj {
-            obj_type: ObjType::Soil,
-            id: 51,
-        };
-        let omp = ObjMapPart::Shift {
-            source_start: a1,
-            destination_start: b1,
-            range_length: 2,
-        };
-        assert_eq!(
-            ObjMapPart::read_line("50 98 2".into(), ObjType::Seed, ObjType::Soil).unwrap(),
-            omp
-        );
-        assert_eq!(omp.apply(a1), b1);
-        assert_eq!(omp.apply(a2), b2);
-        assert_eq!(omp.apply(a3), a3);
+        let val = IntegerInterval::single(79);
+        assert_eq!(interval.overlap(&val), Some(val));
+    }
+
+    #[test]
+    fn range_shift_test1() {
+        let rs = RangeShift::read_line("52 50 48".into()).unwrap();
+        let val = IntegerInterval::single(79);
+        let output = rs.apply_to_interval(&val);
+        assert_eq!(output.image, Some(IntegerInterval::single(81)));
+        assert!(output.not_mapped.is_empty());
+    }
+
+    #[test]
+    fn range_shift_test2() {
+        let rss = RangeShiftStack(vec![
+            RangeShift::read_line("50 98 2".into()).unwrap(),
+            RangeShift::read_line("52 50 48".into()).unwrap(),
+        ]);
+        let output = rss.apply(&IntegerIntervalUnion(vec![IntegerInterval::single(79)]));
+        assert_eq!(output.0.len(), 1);
+        assert_eq!(output.0[0], IntegerInterval::single(81));
     }
 }
