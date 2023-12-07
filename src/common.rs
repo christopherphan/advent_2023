@@ -25,6 +25,16 @@ pub fn get_day(day_number: usize) -> Result<Vec<String>, Box<dyn Error>> {
 #[derive(Debug)]
 pub struct AdventError(pub String);
 
+impl AdventError {
+    pub fn new(s: &str) -> Self {
+        Self(s.into())
+    }
+
+    pub fn not_impl() -> Self {
+        Self("not implemented yet".into())
+    }
+}
+
 impl fmt::Display for AdventError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
