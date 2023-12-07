@@ -1,4 +1,4 @@
-/* Solution to 2023 Advent of Code, Day 6
+/* Solution to 2023 Advent of Code, Day 7
  *
  * Christopher Phan
  */
