@@ -7,6 +7,7 @@ use crate::day4;
 use crate::day5;
 use crate::day6;
 use crate::day7;
+use crate::day8;
 
 pub fn run_day(d: usize) {
     match d {
@@ -30,6 +31,9 @@ pub fn run_day(d: usize) {
         }
         7 => {
             day7::run();
+        }
+        8 => {
+            day8::run();
         }
         k => {
             println!("Solution for day {} not found.", k);
