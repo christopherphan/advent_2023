@@ -699,23 +699,6 @@ L7JLJL-JLJLJL--JLJ.L";
     }
 
     #[test]
-    fn print_doubled_map() {
-        let example_input = common::split_string(ANOTHER_EXAMPLE.to_string());
-        let board = Board::try_from(example_input).unwrap();
-        let pth = board.find_main_loop().unwrap();
-        let se_corner = southeast_corner(pth.clone()).unwrap();
-        let dpth = double_path(pth).unwrap();
-        for row in 0..(2 * se_corner.1 + 3) {
-            for col in 0..(2 * se_corner.0 + 3) {
-                print!("{}", if dpth.contains(&(col, row)) { '#' } else { '.' });
-            }
-            println!("");
-        }
-
-        panic!("wow!!");
-    }
-
-    #[test]
     fn part1_test() {
         let example_inputs = get_example_inputs();
         let outputs: Vec<u64> = example_inputs
