@@ -70,6 +70,14 @@ fn part_2_extrapol(v: Vec<Vec<i64>>) -> Vec<i64> {
     out_vec
 }
 
+/* Part 1 shortcut: you can take the sum of the last element of each line of the resuling triangle
+ * E.g. for the example input line 1, 3, 6, 10, 15, 21, we get the differences
+ *  1   3   6  10  15  21
+ *    2   3   4   5   6
+ *      1   1   1   1
+ *        0   0   0
+ *  and the value of this history is 0 + 1 + 6 + 21 = 28.
+ * */
 fn part_1_line(v: Vec<i64>) -> i64 {
     match v.len() {
         0 => 0_i64,
