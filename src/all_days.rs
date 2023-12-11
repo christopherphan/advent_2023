@@ -1,6 +1,7 @@
 /* src/all_days.rs */
 
 use crate::day1;
+use crate::day10;
 use crate::day2;
 use crate::day3;
 use crate::day4;
@@ -38,6 +39,9 @@ pub fn run_day(d: usize) {
         }
         9 => {
             day9::run();
+        }
+        10 => {
+            day10::run();
         }
         k => {
             println!("Solution for day {} not found.", k);
