@@ -1,44 +1,44 @@
 /* src/all_days.rs */
 
-use crate::day1;
+use crate::day01;
+use crate::day02;
+use crate::day03;
+use crate::day04;
+use crate::day05;
+use crate::day06;
+use crate::day07;
+use crate::day08;
+use crate::day09;
 use crate::day10;
-use crate::day2;
-use crate::day3;
-use crate::day4;
-use crate::day5;
-use crate::day6;
-use crate::day7;
-use crate::day8;
-use crate::day9;
 
 pub fn run_day(d: usize) {
     match d {
         1 => {
-            day1::run();
+            day01::run();
         }
         2 => {
-            day2::run();
+            day02::run();
         }
         3 => {
-            day3::run();
+            day03::run();
         }
         4 => {
-            day4::run();
+            day04::run();
         }
         5 => {
-            day5::run();
+            day05::run();
         }
         6 => {
-            day6::run();
+            day06::run();
         }
         7 => {
-            day7::run();
+            day07::run();
         }
         8 => {
-            day8::run();
+            day08::run();
         }
         9 => {
-            day9::run();
+            day09::run();
         }
         10 => {
             day10::run();
